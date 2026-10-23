@@ -19,7 +19,7 @@ const TAB_NAMES: [&str; 5] = [" Launch ", " Usage ", " Progress ", " Themes ", "
 
 pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
     if !io::stdin().is_terminal() {
-        return Ok(Action::Launch);
+        return Ok(Action::OpenDefault);
     }
     let mut prefs = Prefs::load();
     if prefs.theme.is_empty() {
@@ -67,9 +67,9 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                 match tab {
                     0 => {
                         let items = [
-                            "Launch an agent — provider first  (Enter)",
-                            "Open harness — CLI default model, native picker  (d)",
-                            "Open harness — BYOK, your key for that harness  (b)",
+                            "Open harness — CLI default model, native picker  (Enter)",
+                            "Open harness — BYOK, your saved key for that harness  (b)",
+                            "Launch — provider-first catalog picker, advanced  (l)",
                             "Attach to running session  (a)",
                             "Refresh usage + progress  (r)",
                             "Quit  (q)",
@@ -98,7 +98,7 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                     }
                     _ => frame.render_widget(
                         Paragraph::new(
-                            "Keys\n  Tab / 1-5   switch tab\n  Up/Down     move (Themes)\n  Left/Right  theme <-> background (Themes)\n  Enter       launch (Launch) / apply theme (Themes)\n  a           attach    r  refresh    q  quit\n\nCLI\n  strator            this dashboard\n  strator launch     pick provider + harness, attach\n  strator open       installed harness, CLI default + native picker\n  strator open --byok  installed harness, your API key for it\n  strator usage      launch history + counts\n  strator progress   live agent states + done bar\n  strator themes     list / set theme + background\n  strator doctor     engine, config and PATH check\n  strator attach     open the full multiplexer\n  strator list       panes + agent states (plain text)\n",
+                            "Keys\n  Tab / 1-5   switch tab\n  Up/Down     move (Themes)\n  Left/Right  theme <-> background (Themes)\n  Enter       open harness, CLI default (Launch) / apply theme (Themes)\n  b           BYOK launch (secondary)    l  provider-first launch\n  a           attach    r  refresh    q  quit\n\nCLI\n  strator            this dashboard\n  strator open       DEFAULT: installed harness, CLI default + native picker\n  strator byok       SECONDARY: your API key for codex/claude/etc, saved + reused\n  strator launch     advanced provider-first catalog launch\n  strator usage      launch history + counts\n  strator progress   live agent states + done bar\n  strator themes     list / set theme + background\n  strator doctor     engine, config and PATH check\n  strator attach     open the full multiplexer\n  strator list       panes + agent states (plain text)\n",
                         )
                         .block(body),
                         rows[1],
@@ -125,6 +125,7 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                     KeyCode::Char(c @ '1'..='5') => tab = (c as usize) - ('1' as usize),
                     KeyCode::Char('a') if tab == 0 => return Ok(Action::Attach),
                     KeyCode::Char('d') if tab == 0 => return Ok(Action::OpenDefault),
+                    KeyCode::Char('l') if tab == 0 => return Ok(Action::Launch),
                     KeyCode::Char('b') if tab == 0 => return Ok(Action::OpenByok),
                     KeyCode::Char('r') => {
                         if let Some((u, p)) = crate::dashboard_data() {
@@ -149,7 +150,7 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                             theme_sel = (theme_sel + 1).min(THEMES.len() - 1);
                         }
                     }
-                    KeyCode::Enter if tab == 0 => return Ok(Action::Launch),
+                    KeyCode::Enter if tab == 0 => return Ok(Action::OpenDefault),
                     KeyCode::Enter if tab == 3 => {
                         match themes::apply(THEMES[theme_sel], BACKGROUNDS[bg_sel].name) {
                             Ok(path) => note = format!("Applied {} / {} -> {}", THEMES[theme_sel], BACKGROUNDS[bg_sel].name, path.display()),

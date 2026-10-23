@@ -18,7 +18,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
-const HELP:&str="Strator — provider-first terminal launcher on Strator\n\n  strator                          Dashboard: Launch / Usage / Progress / Themes / Help\n  strator home                     Same dashboard, explicitly\n  strator usage                    Launch history and counts\n  strator progress                 Live agent states and done bar\n  strator themes [set T [BG]]      List or apply theme + background\n  strator doctor                   Engine, config and profile check\n  strator launch [OPTIONS]         Launch a harness in its own project workspace\n  strator open [--harness ID]      Open an installed harness: CLI default model,\n                                   its own login + native model picker (no forced --model)\n  strator open --byok [--harness ID] [--provider ID]\n                                   Same, but BYOK: your API key for that harness\n                                   (env / OS credential store / masked entry)\n  open/launch flags: --model MODEL overrides CLI default; --cwd PATH; --no-attach\n  strator providers               List model providers and API formats\n  strator harnesses                List harnesses, installation, and BYOK support\n  strator list                     List live panes and agent state\n  strator attach                   Open the full Strator TUI\n  strator stop PANE_ID             Close that pane and stop its process\n  strator profiles                 List auto-saved launch profiles\n  strator profiles forget ID       Remove a profile (keeps saved keys)\n  strator keys save|status|forget --provider ID [--base-url URL]\n\nLaunch options:\n  --profile ID    --provider ID    --harness ID    --model MODEL    --cwd PATH\n  --base-url URL   --key-env NAME  --session NAME   --no-attach\n\nKeys come from environment, then the OS credential store, then masked entry.\nEntered keys are saved securely for the next launch. Use keys forget to remove.\nModels are fetched from the provider; type in the picker to filter.\nThere is no --api-key option or plaintext credential file. API formats must\nmatch: Codex uses Responses; Claude uses Messages; chat endpoints use OpenCode\nor Aider. STRATOR_ENGINE selects a Strator runtime outside PATH.\n";
+const HELP:&str="Strator — default-first terminal launcher: your harness, its own login and model picker. BYOK is secondary.\n\n  strator                          Dashboard: Launch / Usage / Progress / Themes / Help\n  strator home                     Same dashboard, explicitly\n  strator usage                    Launch history and counts\n  strator progress                 Live agent states and done bar\n  strator themes [set T [BG]]      List or apply theme + background\n  strator doctor                   Engine, config and profile check\n  strator open [--harness ID]      DEFAULT: open an installed harness with CLI default\n                                   model, its own login + native model picker (no forced --model)\n  strator byok [--harness ID] [--provider ID]\n                                   SECONDARY, BYOK: launch codex / claude / opencode / etc\n                                   with your API key. Key is saved in the OS credential\n                                   store (env, saved, or masked entry) and reused next time.\n                                   Examples: strator byok --harness codex\n                                             strator byok --harness claude --provider anthropic\n  strator open --byok              Same BYOK path, long form\n  strator launch [OPTIONS]         Advanced provider-first launch (catalog model picker)\n  open/launch flags: --model MODEL overrides CLI default; --cwd PATH; --no-attach\n  strator providers               List model providers and API formats\n  strator harnesses                List harnesses, installation, and BYOK support\n  strator list                     List live panes and agent state\n  strator attach                   Open the full Strator TUI\n  strator stop PANE_ID             Close that pane and stop its process\n  strator profiles                 List auto-saved launch profiles\n  strator profiles forget ID       Remove a profile (keeps saved keys)\n  strator keys save|status|forget --provider ID [--base-url URL]\n\nLaunch options:\n  --profile ID    --provider ID    --harness ID    --model MODEL    --cwd PATH\n  --base-url URL   --key-env NAME  --session NAME   --no-attach\n\nBYOK keys come from environment, then the OS credential store, then masked entry.\nEvery resolved BYOK key is saved securely for the next launch. Use keys forget to remove.\nDefault (native) launches use no Strator key at all: the harness login stays in charge.\nModels are fetched from the provider; type in the picker to filter.\nThere is no --api-key option or plaintext credential file. API formats must\nmatch: Codex uses Responses; Claude uses Messages; chat endpoints use OpenCode\nor Aider. STRATOR_ENGINE selects a Strator runtime outside PATH.\n";
 
 #[derive(Default)]
 struct Options {
@@ -318,21 +318,28 @@ fn launch(mut o: Options) -> io::Result<i32> {
     let key = if provider.id == "native" {
         None
     } else {
-        match std::env::var(key_env) {
-            Ok(key) if !key.is_empty() => Some(key),
-            _ => match credentials::load(provider.id, &endpoint, key_env)? {
-                Some(key) => {
-                    println!("Using saved {} key.", provider.name);
-                    Some(key)
-                }
-                None => {
-                    let key = ui::secret(key_env)?;
-                    credentials::save(provider.id, &endpoint, key_env, &key)?;
-                    println!("Key saved in your OS credential store.");
-                    Some(key)
-                }
+        let env_key = std::env::var(key_env).ok().filter(|k| !k.is_empty());
+        let saved_key = if env_key.is_none() {
+            credentials::load(provider.id, &endpoint, key_env)?
+        } else {
+            None
+        };
+        let (key, source) = match key_source(env_key.is_some(), saved_key.is_some()) {
+            KeySource::Env => (env_key.unwrap(), KeySource::Env),
+            KeySource::Saved => (saved_key.unwrap(), KeySource::Saved),
+            KeySource::Prompt => (ui::secret(key_env)?, KeySource::Prompt),
+        };
+        // Make it save: whichever way the key arrived, persist it in the OS
+        // credential store so the next BYOK launch for this provider +
+        // endpoint needs no key at all. Failure only warns; launch continues.
+        match credentials::save(provider.id, &endpoint, key_env, &key) {
+            Ok(()) => match source {
+                KeySource::Saved => println!("Using saved {} key.", provider.name),
+                _ => println!("{} key saved in your OS credential store.", provider.name),
             },
+            Err(error) => eprintln!("Key could not be saved ({error}); continuing without saving."),
         }
+        Some(key)
     };
     let model = match o.model {
         Some(m) => m,
@@ -515,10 +522,44 @@ fn doctor() -> io::Result<i32> {
 /// - BYOK (`--byok`): pick a compatible provider for *this* harness,
 ///   key from env / OS credential store / masked entry (saved securely),
 ///   then Strator's provider model picker.
-fn open_harness(mut o: Options) -> io::Result<i32> {
-    if o.byok && o.cli_default {
-        return Err(io::Error::other("Choose one: --byok or --cli-default, not both."));
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OpenMode {
+    CliDefault,
+    Byok,
+}
+
+/// Default-first mode choice for `strator open`: no flag means CLI default
+/// (own login, default model, native picker). BYOK is the secondary opt-in.
+pub fn open_mode(byok: bool, cli_default: bool) -> Result<OpenMode, String> {
+    match (byok, cli_default) {
+        (true, true) => Err("Choose one: --byok or --cli-default, not both.".into()),
+        (true, false) => Ok(OpenMode::Byok),
+        _ => Ok(OpenMode::CliDefault),
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeySource {
+    Env,
+    Saved,
+    Prompt,
+}
+
+/// Where a BYOK key comes from, in priority order. Every resolved key is
+/// then saved to the OS credential store (see launch), so a key supplied
+/// once — typed or from the environment — is reused next time.
+pub fn key_source(env_present: bool, saved_present: bool) -> KeySource {
+    if env_present {
+        KeySource::Env
+    } else if saved_present {
+        KeySource::Saved
+    } else {
+        KeySource::Prompt
+    }
+}
+fn open_harness(mut o: Options) -> io::Result<i32> {
+    let mode = open_mode(o.byok, o.cli_default).map_err(io::Error::other)?;
     // Pick from harnesses actually installed on this machine.
     let installed: Vec<_> = HARNESSES
         .iter()
@@ -540,7 +581,7 @@ fn open_harness(mut o: Options) -> io::Result<i32> {
         installed[index]
     };
     o.harness = Some(harness.id.into());
-    if o.byok {
+    if mode == OpenMode::Byok {
         let compatible: Vec<_> = PROVIDERS
             .iter()
             .filter(|p| p.id != "native" && harness.providers.contains(&p.id))
@@ -614,6 +655,11 @@ fn run() -> io::Result<i32> {
             }
         }
         "open" => open_harness(options(&args[1..]).map_err(io::Error::other)?),
+        "byok" => {
+            let mut o = options(&args[1..]).map_err(io::Error::other)?;
+            o.byok = true;
+            open_harness(o)
+        }
         "usage" => {
             println!("{}", usage::render(&usage::load(), usage::now_secs()));
             Ok(0)
@@ -793,6 +839,19 @@ mod tests {
     fn unknown_or_secret_options_are_rejected() {
         assert!(options(&["--api-key".into(), "fake".into()]).is_err());
         assert!(options(&["--provider".into()]).is_err());
+    }
+    #[test]
+    fn open_mode_is_cli_default_unless_byok() {
+        assert_eq!(open_mode(false, false), Ok(OpenMode::CliDefault));
+        assert_eq!(open_mode(false, true), Ok(OpenMode::CliDefault));
+        assert_eq!(open_mode(true, false), Ok(OpenMode::Byok));
+        assert!(open_mode(true, true).is_err());
+    }
+    #[test]
+    fn byok_key_source_priority() {
+        assert_eq!(key_source(true, true), KeySource::Env);
+        assert_eq!(key_source(false, true), KeySource::Saved);
+        assert_eq!(key_source(false, false), KeySource::Prompt);
     }
     #[test]
     fn open_mode_flags_parse_and_reject_secrets() {

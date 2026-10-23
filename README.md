@@ -42,20 +42,30 @@ Tabs (keys `1`–`5` or `Tab`):
   engine config.
 - **Help** — every key and command, in one screen.
 
-## Open a harness your way
+## Open a harness: default first, BYOK second
+
+Default is the harness's own setup. BYOK is the secondary opt-in.
 
 ```sh
-strator open                     # installed harness, its own login,
+strator open                     # DEFAULT: installed harness, its own login,
                                  # default model, native model picker
-strator open --byok              # your API key for that harness
-strator open --harness codex --byok --provider openai
+strator byok --harness codex     # BYOK: your OpenAI key for Codex
+strator byok --harness claude --provider anthropic
+strator byok                     # BYOK: pick harness, then provider
 strator open --harness claude --model opus   # explicit override
 ```
 
 CLI-default mode passes **no** `--model`: the harness keeps its own
-login, default model, and in-CLI picker. BYOK keys come from the
-environment, the OS credential store, or masked entry — saved securely,
-never in a plain file. There is no `--api-key` flag.
+login, default model, and in-CLI picker. In the dashboard, `Enter` is
+CLI-default, `b` is BYOK, `l` is the advanced provider-first catalog
+launch (`strator launch`).
+
+BYOK keys come from the environment, the OS credential store, or masked
+entry. **Every resolved key is saved** to the OS credential store
+(scoped to provider + endpoint), so the next BYOK launch for that
+harness needs no key at all. Manage them with
+`strator keys save|status|forget --provider ID`. Never a plain file.
+There is no `--api-key` flag.
 
 ## Commands
 
