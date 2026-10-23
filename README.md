@@ -49,7 +49,7 @@ Default is the harness's own setup. BYOK is the secondary opt-in.
 ```sh
 strator open                     # DEFAULT: installed harness, its own login,
                                  # default model, native model picker
-strator byok --harness codex     # BYOK: your OpenAI key for Codex
+strator byok --harness codex     # BYOK: your OpenAI (model provider) key
 strator byok --harness claude --provider anthropic
 strator byok                     # BYOK: pick harness, then provider
 strator open --harness claude --model opus   # explicit override
@@ -60,10 +60,13 @@ login, default model, and in-CLI picker. In the dashboard, `Enter` is
 CLI-default, `b` is BYOK, `l` is the advanced provider-first catalog
 launch (`strator launch`).
 
-BYOK keys come from the environment, the OS credential store, or masked
-entry. **Every resolved key is saved** to the OS credential store
-(scoped to provider + endpoint), so the next BYOK launch for that
-harness needs no key at all. Manage them with
+BYOK means a **model provider key** (OpenAI, Anthropic, OpenRouter, …) —
+not a harness key. Keys come from the environment, the OS credential
+store, or masked entry. **Every resolved key is saved** to the OS
+credential store, scoped to provider + endpoint only, so one saved
+OpenAI key serves Codex, OpenCode, Pi, and every other harness
+launched on OpenAI. The next BYOK launch on that provider needs
+no key at all. Manage them with
 `strator keys save|status|forget --provider ID`. Never a plain file.
 There is no `--api-key` flag.
 

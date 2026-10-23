@@ -1,5 +1,8 @@
 use std::io;
 
+// BYOK = model provider key. Entries are scoped to provider + endpoint
+// + key variable only, never to a harness: one saved OpenAI key serves
+// Codex, OpenCode, Pi, and every other harness launched on OpenAI.
 fn entry(provider: &str, endpoint: &str, variable: &str) -> io::Result<keyring::Entry> {
     // Scope gateway keys to the exact endpoint, not just the provider name.
     let account = serde_json::to_string(&(provider, endpoint.trim_end_matches('/'), variable))?;

@@ -68,7 +68,7 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                     0 => {
                         let items = [
                             "Open harness — CLI default model, native picker  (Enter)",
-                            "Open harness — BYOK, your saved key for that harness  (b)",
+                            "Open harness — BYOK, your model provider key  (b)",
                             "Launch — provider-first catalog picker, advanced  (l)",
                             "Attach to running session  (a)",
                             "Refresh usage + progress  (r)",
@@ -98,7 +98,7 @@ pub fn run(usage_text: String, progress_text: String) -> io::Result<Action> {
                     }
                     _ => frame.render_widget(
                         Paragraph::new(
-                            "Keys\n  Tab / 1-5   switch tab\n  Up/Down     move (Themes)\n  Left/Right  theme <-> background (Themes)\n  Enter       open harness, CLI default (Launch) / apply theme (Themes)\n  b           BYOK launch (secondary)    l  provider-first launch\n  a           attach    r  refresh    q  quit\n\nCLI\n  strator            this dashboard\n  strator open       DEFAULT: installed harness, CLI default + native picker\n  strator byok       SECONDARY: your API key for codex/claude/etc, saved + reused\n  strator launch     advanced provider-first catalog launch\n  strator usage      launch history + counts\n  strator progress   live agent states + done bar\n  strator themes     list / set theme + background\n  strator doctor     engine, config and PATH check\n  strator attach     open the full multiplexer\n  strator list       panes + agent states (plain text)\n",
+                            "Keys\n  Tab / 1-5   switch tab\n  Up/Down     move (Themes)\n  Left/Right  theme <-> background (Themes)\n  Enter       open harness, CLI default (Launch) / apply theme (Themes)\n  b           BYOK launch (secondary)    l  provider-first launch\n  a           attach    r  refresh    q  quit\n\nCLI\n  strator            this dashboard\n  strator open       DEFAULT: installed harness, CLI default + native picker\n  strator byok       SECONDARY: model provider key, saved once, shared by harnesses\n  strator launch     advanced provider-first catalog launch\n  strator usage      launch history + counts\n  strator progress   live agent states + done bar\n  strator themes     list / set theme + background\n  strator doctor     engine, config and PATH check\n  strator attach     open the full multiplexer\n  strator list       panes + agent states (plain text)\n",
                         )
                         .block(body),
                         rows[1],
