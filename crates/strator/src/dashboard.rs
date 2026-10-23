@@ -142,7 +142,23 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
     let mut focus = 0usize;
     let mut usage_text = String::new();
     let refresh_usage = |usage_text: &mut String| {
-        *usage_text = crate::usage::render(&crate::usage::load(), crate::usage::now_secs());
+        let events = crate::usage::load();
+        let s = crate::usage::summarize(&events, crate::usage::now_secs());
+        let top = |rows: &[(String, usize)]| {
+            rows.iter()
+                .take(3)
+                .map(|(n, c)| format!("{n} x{c}"))
+                .collect::<Vec<_>>()
+                .join(" / ")
+        };
+        *usage_text = format!(
+            "{} launches / {} this week / {} projects\n{}\n{}",
+            s.total,
+            s.last_7_days,
+            s.projects,
+            top(&s.by_provider),
+            top(&s.by_harness)
+        );
     };
     refresh_usage(&mut usage_text);
     let mut last_size = (0u16, 0u16);
