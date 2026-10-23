@@ -5,7 +5,7 @@ launch an agent, watch usage and progress, change the theme — then drop
 into a full terminal multiplexer where every agent runs in a real pane.
 
 Strator is a fork of [Herdr](https://github.com/herdrdev/herdr) (Apache-2.0),
-rebranded and extended with a tabbed home, usage/progress tracking,
+rebranded and extended with a multi-window home, usage/progress tracking,
 themes + backgrounds, and harness-first launching. Engine credit stays
 with the Herdr authors; see `NOTICE`.
 
@@ -32,15 +32,24 @@ Windows: `Strator.cmd` does the same from a checkout.
 
 ## The dashboard
 
-Tabs (keys `1`–`5` or `Tab`):
+No tabs. One screen, several small windows side by side — a union of
+terminal windows and widgets, all visible at once:
 
-- **Launch** — provider-first launch (`Enter`), or open a harness you
-  already have: **CLI default** (`d`) or **BYOK** (`b`).
-- **Usage** — launch history: counts by provider, harness, model, project.
-- **Progress** — live agents: working / blocked / done, with a done bar.
-- **Themes** — pick a theme + background, `Enter` applies it live to the
-  engine config.
-- **Help** — every key and command, in one screen.
+- **Launch** (top left) — open a harness: CLI default (`Enter`) or
+  BYOK model provider key (`b`); provider-first catalog launch (`l`).
+- **Usage** (bottom left) — launch history: counts by provider,
+  harness, model, project. Scrollable.
+- **Progress** (bottom right) — live agents: working / blocked / done,
+  with a done bar. Scrollable.
+- **Themes + backgrounds** (top right) — click a theme or background
+  and it applies live to the engine config.
+
+Mouse-first: click a window to focus it, click a row to select,
+double-click (or `Enter`) to run/apply, wheel scrolls the window
+under the cursor. Keyboard still works everywhere: `Tab` moves
+between windows, arrows move, `r` refreshes, `q` quits.
+Inside the multiplexer itself, panes, tabs, and workspaces are
+already fully mouse-operated upstream.
 
 ## Open a harness: default first, BYOK second
 
@@ -97,7 +106,7 @@ with `strator attach`.
 
 18 built-in themes (catppuccin, tokyo-night, dracula, nord, gruvbox,
 kanagawa, rose-pine, …) and 8 backgrounds (midnight, abyss, ember,
-forest, plum, mono, paper, none). Apply from the Themes tab or:
+forest, plum, mono, paper, none). Apply from the Themes window or:
 
 ```sh
 strator themes set tokyo-night midnight
