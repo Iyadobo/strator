@@ -1,28 +1,32 @@
 [package]
-name = "herdr"
+name = "strator-engine"
 version = "0.9.3"
 edition = "2021"
 build = "build.rs"
 description = "terminal workspace manager for AI coding agents"
 license = "Apache-2.0"
-repository = "https://github.com/herdrdev/herdr"
-homepage = "https://herdr.dev"
+repository = "https://github.com/Iyadobo/strator"
+homepage = "https://github.com/Iyadobo/strator"
 keywords = ["terminal", "tui", "ai", "agents", "multiplexer"]
 categories = ["command-line-utilities"]
 include = [
     "src/**/*",
     "assets/sounds/*",
-    "docs/next/api/herdr-api.schema.json",
-    "skills/herdr/SKILL.md",
+    "docs/next/api/strator-api.schema.json",
+    "skills/strator/SKILL.md",
     "distribution/install.ps1",
     "README.md",
     "LICENSE",
     "Cargo.toml",
 ]
 
+[[bin]]
+name = "strator-engine"
+path = "src/main.rs"
+
 [workspace]
-members = ["crates/ghostty-vt", "crates/harnesshub"]
-default-members = [".", "crates/ghostty-vt", "crates/harnesshub"]
+members = ["crates/ghostty-vt", "crates/strator"]
+default-members = [".", "crates/ghostty-vt", "crates/strator"]
 
 [dependencies]
 ghostty-vt = { path = "crates/ghostty-vt" }

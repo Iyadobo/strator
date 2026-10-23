@@ -55,11 +55,11 @@ mod tests {
 
     #[test]
     fn verifies_matching_sha256() {
-        let path = std::env::temp_dir().join(format!("herdr-checksum-test-{}", std::process::id()));
-        fs::write(&path, b"herdr").unwrap();
+        let path = std::env::temp_dir().join(format!("strator-checksum-test-{}", std::process::id()));
+        fs::write(&path, b"strator").unwrap();
         let result = super::verify_sha256(
             &path,
-            "78193ef266c1e3c2ce4ea2a86d7fc87e8c52799653faaac8536533a1c9300f82",
+            "2a2ac10a4f0ded32bd0a3723892953cc12861271a40a0b4b3490faa81d753ed3",
         );
         let _ = fs::remove_file(&path);
         assert!(result.is_ok());

@@ -113,7 +113,7 @@ pub(crate) fn remove_legacy_pi_extension_from_omp_dir(dir: &Path) -> io::Result<
     }
 
     let content = fs::read_to_string(&legacy_path)?;
-    if content.contains("HERDR_INTEGRATION_ID=pi") {
+    if content.contains("STRATOR_INTEGRATION_ID=pi") {
         fs::remove_file(legacy_path)?;
         return Ok(true);
     }
@@ -1059,7 +1059,7 @@ fn letta_install_artifact_path(path: &Path, role: &str) -> io::Result<PathBuf> {
         .file_name()
         .ok_or_else(|| io::Error::other(format!("invalid install path: {}", path.display())))?;
     let mut artifact_name = file_name.to_os_string();
-    artifact_name.push(format!(".herdr-install-{}-{role}", std::process::id()));
+    artifact_name.push(format!(".strator-install-{}-{role}", std::process::id()));
     Ok(path.with_file_name(artifact_name))
 }
 
@@ -1627,7 +1627,7 @@ pub(crate) fn install_antigravity_cli() -> io::Result<AntigravityCliInstallPaths
         ))
     })?;
 
-    // The Herdr block is Herdr-owned, so rewrite it wholesale and leave every
+    // The Strator block is Strator-owned, so rewrite it wholesale and leave every
     // other named hook untouched.
     hooks.insert(
         ANTIGRAVITY_CLI_HOOK_BLOCK_NAME.to_string(),
@@ -1653,10 +1653,10 @@ pub(crate) fn antigravity_cli_hook_command(hook_path: &Path, action: &str) -> St
     }
 }
 
-/// Builds the Herdr-owned `hooks.json` block for Antigravity CLI.
+/// Builds the Strator-owned `hooks.json` block for Antigravity CLI.
 ///
-/// Every event Herdr registers takes a flat handler list; the `matcher`/`hooks`
-/// group is only valid for the tool events, which Herdr does not use.
+/// Every event Strator registers takes a flat handler list; the `matcher`/`hooks`
+/// group is only valid for the tool events, which Strator does not use.
 fn antigravity_cli_hook_block(hook_path: &Path) -> Value {
     let mut block = Map::new();
     for (event, action) in ANTIGRAVITY_CLI_HOOK_EVENTS {
@@ -1707,7 +1707,7 @@ pub(crate) fn uninstall_antigravity_cli() -> io::Result<AntigravityCliUninstallR
     })
 }
 
-/// The complete Herdr-owned Grok hook config. Installation and status share
+/// The complete Strator-owned Grok hook config. Installation and status share
 /// this value so any config drift is reported as outdated.
 fn grok_hook_command(hook_path: &Path) -> String {
     #[cfg(windows)]
@@ -1751,7 +1751,7 @@ pub(crate) fn install_grok() -> io::Result<GrokInstallPaths> {
         )));
     }
 
-    // Grok merges every `~/.grok/hooks/*.json`, so herdr owns a dedicated
+    // Grok merges every `~/.grok/hooks/*.json`, so strator owns a dedicated
     // config file and never edits the user's other hooks. The hook script and
     // its config live side by side under `hooks/`.
     let hooks_dir = dir.join("hooks");
@@ -1778,7 +1778,7 @@ pub(crate) fn uninstall_grok() -> io::Result<GrokUninstallResult> {
     let hook_path = hooks_dir.join(GROK_HOOK_INSTALL_NAME);
     let config_path = hooks_dir.join(GROK_HOOK_CONFIG_INSTALL_NAME);
 
-    // herdr owns both files outright, so removal is a straight delete.
+    // strator owns both files outright, so removal is a straight delete.
     let removed_config_file = remove_file_if_exists(&config_path)?;
     let removed_hook_file = remove_file_if_exists(&hook_path)?;
 

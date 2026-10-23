@@ -15,7 +15,7 @@
 let
   manifest = lib.importTOML ../Cargo.toml;
   zigDeps = callPackage ../vendor/libghostty-vt/build.zig.zon.nix {
-    name = "herdr-libghostty-vt-zig-cache";
+    name = "strator-libghostty-vt-zig-cache";
     inherit zstd;
     linkFarm =
       name: entries:
@@ -32,7 +32,7 @@ let
   ];
 in
 rustPlatform.buildRustPackage {
-  pname = "herdr";
+  pname = "strator";
   version = manifest.package.version;
 
   src = lib.fileset.toSource {
@@ -42,7 +42,7 @@ rustPlatform.buildRustPackage {
         ../assets
         ../crates
         ../distribution/install.ps1
-        ../docs/next/api/herdr-api.schema.json
+        ../docs/next/api/strator-api.schema.json
         ../src
         ../vendor/libghostty-vt
         ../vendor/libghostty-vt.vendor.json
@@ -50,7 +50,7 @@ rustPlatform.buildRustPackage {
         ../build.rs
         ../Cargo.lock
         ../Cargo.toml
-        ../skills/herdr/SKILL.md
+        ../skills/strator/SKILL.md
       ]
     );
   };
@@ -83,9 +83,9 @@ rustPlatform.buildRustPackage {
 
   meta = {
     description = "Terminal workspace manager for AI coding agents";
-    homepage = "https://herdr.dev";
+    homepage = "https://strator.dev";
     license = lib.licenses.asl20;
-    mainProgram = "herdr";
+    mainProgram = "strator";
     platforms = lib.platforms.linux ++ lib.platforms.darwin;
   };
 }

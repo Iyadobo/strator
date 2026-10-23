@@ -414,7 +414,7 @@ impl ClientShellState {
                     return;
                 };
                 let crate::input::InputLease::Forwarded(lease) = lease else {
-                    // Herdr consumed the press; its release stays with Herdr.
+                    // Strator consumed the press; its release stays with Strator.
                     return;
                 };
                 // A native record is released as the recorded key. A VT release

@@ -1,9 +1,9 @@
-//! Headless server mode — runs the herdr event loop without a real terminal.
+//! Headless server mode — runs the strator event loop without a real terminal.
 //!
 //! The server:
 //! - Does not enter raw mode or read stdin
-//! - Creates and listens on both `herdr.sock` (existing JSON API) and
-//!   `herdr-client.sock` (new binary protocol)
+//! - Creates and listens on both `strator.sock` (existing JSON API) and
+//!   `strator-client.sock` (new binary protocol)
 //! - Initializes AppState and all PTYs from session restore or fresh state
 //! - Runs the main event loop (drain events, drain API requests, scheduled tasks)
 //! - Renders to a virtual ratatui Buffer in memory
@@ -183,7 +183,7 @@ enum AltScreenReadConflict {
     Defer,
 }
 
-/// The headless server — runs the herdr event loop without a real terminal.
+/// The headless server — runs the strator event loop without a real terminal.
 pub struct HeadlessServer {
     app: app::App,
     #[cfg(unix)]
@@ -259,7 +259,7 @@ fn spawn_windows_client_accept_thread(
     should_quit: Arc<AtomicBool>,
     server_event_tx: mpsc::Sender<ServerEvent>,
 ) -> io::Result<std::thread::JoinHandle<()>> {
-    crate::thread_spawn::spawn_named("herdr-client-accept", move || {
+    crate::thread_spawn::spawn_named("strator-client-accept", move || {
         let mut next_client_id = 1_u64;
         while !should_quit.load(Ordering::Acquire) {
             let stream = match listener.accept() {
@@ -284,7 +284,7 @@ fn spawn_windows_client_accept_thread(
 
             let should_quit = should_quit.clone();
             let server_event_tx = server_event_tx.clone();
-            let spawned = crate::thread_spawn::spawn_named("herdr-client-conn", move || {
+            let spawned = crate::thread_spawn::spawn_named("strator-client-conn", move || {
                 if let Err(err) = crate::server::client_transport::handle_client_handshake(
                     stream,
                     client_id,
@@ -1442,7 +1442,7 @@ impl HeadlessServer {
 
     /// Renders `ui.window_title` against the foreground client view. `None` means
     /// window titles are disabled or every token resolved empty, which leaves
-    /// the client on Herdr's default title.
+    /// the client on Strator's default title.
     fn configured_window_title(&self) -> Option<String> {
         self.foreground_window_title_target()
             .map_or_else(
@@ -1456,7 +1456,7 @@ impl HeadlessServer {
     }
 
     /// Pushes the configured outer window title to the foreground client when it
-    /// changed. Herdr consumes each pane's own `OSC 0`/`OSC 2`, so without this
+    /// changed. Strator consumes each pane's own `OSC 0`/`OSC 2`, so without this
     /// the host terminal title never follows the session — which is what window
     /// managers read for tab and group bar labels.
     fn sync_window_title(&mut self) {
@@ -1524,7 +1524,7 @@ impl HeadlessServer {
         };
         let set_title = title.is_some();
         // An explicit title suppresses `ui.window_title` until it is cleared,
-        // and clearing restores the configured title rather than only "herdr".
+        // and clearing restores the configured title rather than only "strator".
         self.api_window_title = title.clone();
         let title = title.or_else(|| self.configured_window_title());
         let changed = self.send_window_title(title);
@@ -2094,7 +2094,7 @@ impl HeadlessServer {
                 size,
                 max,
             } => {
-                let detail = format!("Input message is {size} bytes; Herdr's limit is {max} bytes");
+                let detail = format!("Input message is {size} bytes; Strator's limit is {max} bytes");
                 let message = if matches!(
                     self.clients.get(&client_id).map(|client| &client.mode),
                     Some(ClientConnectionMode::ClientShell)
@@ -3088,7 +3088,7 @@ impl HeadlessServer {
         let _ = msg.respond_to.send(response);
 
         // Forward new toast state only when a client-local delivery mode is selected.
-        // Herdr delivery renders the toast in-frame and must not ask clients to
+        // Strator delivery renders the toast in-frame and must not ask clients to
         // show a terminal or system notification.
         let toast_after = self.app.state.toast.clone();
         let forwarded_toast_from_state = if should_forward_toast_to_clients(

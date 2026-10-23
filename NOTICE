@@ -1,7 +1,7 @@
-HarnessHub is derived from Herdr (https://github.com/herdrdev/herdr),
+Strator is derived from Strator (https://github.com/Iyadobo/strator),
 licensed under the Apache License, Version 2.0.
 
 The upstream Rust terminal runtime and its copyright notices are retained.
-HarnessHub adds a native provider-first terminal launcher and API-key adapters
-under crates/harnesshub/. Cargo workspace metadata and this fork's README have
+Strator adds a native provider-first terminal launcher and API-key adapters
+under crates/strator/. Cargo workspace metadata and this fork's README have
 been modified to include the new terminal product.

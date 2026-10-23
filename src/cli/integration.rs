@@ -26,7 +26,7 @@ fn integration_status(args: &[String]) -> std::io::Result<i32> {
         [] => false,
         [flag] if flag == "--outdated-only" => true,
         _ => {
-            eprintln!("usage: herdr integration status [--outdated-only]");
+            eprintln!("usage: strator integration status [--outdated-only]");
             return Ok(2);
         }
     };
@@ -147,13 +147,13 @@ fn parse_integration_target(
 ) -> std::io::Result<Option<IntegrationCommandTarget>> {
     let Some(target) = args.first().map(|arg| arg.as_str()) else {
         eprintln!(
-            "usage: herdr integration {action} <pi|omp|claude|codex|copilot|devin|droid|kimi|opencode|kilo|hermes|qodercli|qwen|letta|cursor|mastracode|grok>"
+            "usage: strator integration {action} <pi|omp|claude|codex|copilot|devin|droid|kimi|opencode|kilo|hermes|qodercli|qwen|letta|cursor|mastracode|grok>"
         );
         return Ok(None);
     };
     if args.len() != 1 {
         eprintln!(
-            "usage: herdr integration {action} <pi|omp|claude|codex|copilot|devin|droid|kimi|opencode|kilo|hermes|qodercli|qwen|letta|cursor|mastracode|grok>"
+            "usage: strator integration {action} <pi|omp|claude|codex|copilot|devin|droid|kimi|opencode|kilo|hermes|qodercli|qwen|letta|cursor|mastracode|grok>"
         );
         return Ok(None);
     }
@@ -192,42 +192,42 @@ fn parse_integration_target(
 }
 
 fn print_integration_help() {
-    eprintln!("herdr integration commands:");
-    eprintln!("  herdr integration install pi");
-    eprintln!("  herdr integration install omp");
-    eprintln!("  herdr integration install claude");
-    eprintln!("  herdr integration install codex");
-    eprintln!("  herdr integration install copilot");
-    eprintln!("  herdr integration install devin");
-    eprintln!("  herdr integration install droid");
-    eprintln!("  herdr integration install kimi");
-    eprintln!("  herdr integration install opencode");
-    eprintln!("  herdr integration install kilo");
-    eprintln!("  herdr integration install hermes");
-    eprintln!("  herdr integration install qodercli");
-    eprintln!("  herdr integration install qwen");
-    eprintln!("  herdr integration install letta");
-    eprintln!("  herdr integration install cursor");
-    eprintln!("  herdr integration install mastracode");
-    eprintln!("  herdr integration install antigravity-cli");
-    eprintln!("  herdr integration install grok");
-    eprintln!("  herdr integration uninstall pi");
-    eprintln!("  herdr integration uninstall omp");
-    eprintln!("  herdr integration uninstall claude");
-    eprintln!("  herdr integration uninstall codex");
-    eprintln!("  herdr integration uninstall copilot");
-    eprintln!("  herdr integration uninstall devin");
-    eprintln!("  herdr integration uninstall droid");
-    eprintln!("  herdr integration uninstall kimi");
-    eprintln!("  herdr integration uninstall opencode");
-    eprintln!("  herdr integration uninstall kilo");
-    eprintln!("  herdr integration uninstall hermes");
-    eprintln!("  herdr integration uninstall qodercli");
-    eprintln!("  herdr integration uninstall qwen");
-    eprintln!("  herdr integration uninstall letta");
-    eprintln!("  herdr integration uninstall cursor");
-    eprintln!("  herdr integration uninstall mastracode");
-    eprintln!("  herdr integration uninstall antigravity-cli");
-    eprintln!("  herdr integration uninstall grok");
-    eprintln!("  herdr integration status [--outdated-only]");
+    eprintln!("strator integration commands:");
+    eprintln!("  strator integration install pi");
+    eprintln!("  strator integration install omp");
+    eprintln!("  strator integration install claude");
+    eprintln!("  strator integration install codex");
+    eprintln!("  strator integration install copilot");
+    eprintln!("  strator integration install devin");
+    eprintln!("  strator integration install droid");
+    eprintln!("  strator integration install kimi");
+    eprintln!("  strator integration install opencode");
+    eprintln!("  strator integration install kilo");
+    eprintln!("  strator integration install hermes");
+    eprintln!("  strator integration install qodercli");
+    eprintln!("  strator integration install qwen");
+    eprintln!("  strator integration install letta");
+    eprintln!("  strator integration install cursor");
+    eprintln!("  strator integration install mastracode");
+    eprintln!("  strator integration install antigravity-cli");
+    eprintln!("  strator integration install grok");
+    eprintln!("  strator integration uninstall pi");
+    eprintln!("  strator integration uninstall omp");
+    eprintln!("  strator integration uninstall claude");
+    eprintln!("  strator integration uninstall codex");
+    eprintln!("  strator integration uninstall copilot");
+    eprintln!("  strator integration uninstall devin");
+    eprintln!("  strator integration uninstall droid");
+    eprintln!("  strator integration uninstall kimi");
+    eprintln!("  strator integration uninstall opencode");
+    eprintln!("  strator integration uninstall kilo");
+    eprintln!("  strator integration uninstall hermes");
+    eprintln!("  strator integration uninstall qodercli");
+    eprintln!("  strator integration uninstall qwen");
+    eprintln!("  strator integration uninstall letta");
+    eprintln!("  strator integration uninstall cursor");
+    eprintln!("  strator integration uninstall mastracode");
+    eprintln!("  strator integration uninstall antigravity-cli");
+    eprintln!("  strator integration uninstall grok");
+    eprintln!("  strator integration status [--outdated-only]");
 }

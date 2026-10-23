@@ -16,7 +16,7 @@ use crate::popup_size::PopupSize;
 
 const PLUGIN_BUILD_OUTPUT_MAX_BYTES: usize = 64 * 1024;
 const PLUGIN_INSTALL_USAGE: &str =
-    "usage: herdr plugin install [--ref REF] [--yes|-y] <owner>/<repo>[/subdir...]";
+    "usage: strator plugin install [--ref REF] [--yes|-y] <owner>/<repo>[/subdir...]";
 
 pub(super) fn run_plugin_command(args: &[String]) -> std::io::Result<i32> {
     let Some(subcommand) = args.first().map(|arg| arg.as_str()) else {
@@ -50,7 +50,7 @@ pub(super) fn run_plugin_command(args: &[String]) -> std::io::Result<i32> {
 
 fn plugin_link(args: &[String]) -> std::io::Result<i32> {
     let Some(path) = args.first() else {
-        eprintln!("usage: herdr plugin link <path> [--disabled]");
+        eprintln!("usage: strator plugin link <path> [--disabled]");
         return Ok(2);
     };
     let path = normalize_plugin_path_arg(path)?;
@@ -90,11 +90,11 @@ fn plugin_link(args: &[String]) -> std::io::Result<i32> {
 
 fn plugin_config_dir_command(args: &[String]) -> std::io::Result<i32> {
     let Some(plugin_id) = args.first() else {
-        eprintln!("usage: herdr plugin config-dir <plugin_id>");
+        eprintln!("usage: strator plugin config-dir <plugin_id>");
         return Ok(2);
     };
     if args.len() != 1 {
-        eprintln!("usage: herdr plugin config-dir <plugin_id>");
+        eprintln!("usage: strator plugin config-dir <plugin_id>");
         return Ok(2);
     }
     let path = crate::plugin_paths::plugin_config_dir(plugin_id);
@@ -142,11 +142,11 @@ fn plugin_list(args: &[String]) -> std::io::Result<i32> {
 
 fn plugin_unlink(args: &[String]) -> std::io::Result<i32> {
     let Some(plugin_id) = args.first() else {
-        eprintln!("usage: herdr plugin unlink <plugin_id>");
+        eprintln!("usage: strator plugin unlink <plugin_id>");
         return Ok(2);
     };
     if args.len() != 1 {
-        eprintln!("usage: herdr plugin unlink <plugin_id>");
+        eprintln!("usage: strator plugin unlink <plugin_id>");
         return Ok(2);
     }
     print_plugin_response(Method::PluginUnlink(PluginUnlinkParams {
@@ -451,11 +451,11 @@ fn install_github_plugin(
 
 fn plugin_uninstall(args: &[String]) -> std::io::Result<i32> {
     let Some(target) = args.first() else {
-        eprintln!("usage: herdr plugin uninstall <plugin_id|owner/repo[/subdir...]>");
+        eprintln!("usage: strator plugin uninstall <plugin_id|owner/repo[/subdir...]>");
         return Ok(2);
     };
     if args.len() != 1 {
-        eprintln!("usage: herdr plugin uninstall <plugin_id|owner/repo[/subdir...]>");
+        eprintln!("usage: strator plugin uninstall <plugin_id|owner/repo[/subdir...]>");
         return Ok(2);
     }
 
@@ -519,14 +519,14 @@ fn plugin_uninstall(args: &[String]) -> std::io::Result<i32> {
 fn plugin_set_enabled(args: &[String], enabled: bool) -> std::io::Result<i32> {
     let Some(plugin_id) = args.first() else {
         eprintln!(
-            "usage: herdr plugin {} <plugin_id>",
+            "usage: strator plugin {} <plugin_id>",
             if enabled { "enable" } else { "disable" }
         );
         return Ok(2);
     };
     if args.len() != 1 {
         eprintln!(
-            "usage: herdr plugin {} <plugin_id>",
+            "usage: strator plugin {} <plugin_id>",
             if enabled { "enable" } else { "disable" }
         );
         return Ok(2);
@@ -621,7 +621,7 @@ fn plugin_action_list(args: &[String]) -> std::io::Result<i32> {
 
 fn plugin_action_invoke(args: &[String]) -> std::io::Result<i32> {
     let Some(action_id) = args.first() else {
-        eprintln!("usage: herdr plugin action invoke <action_id> [--plugin ID]");
+        eprintln!("usage: strator plugin action invoke <action_id> [--plugin ID]");
         return Ok(2);
     };
     let mut plugin_id = None;
@@ -831,11 +831,11 @@ fn parse_popup_dimension(value: &str, flag: &str) -> Option<PopupSize> {
 
 fn plugin_pane_focus(args: &[String]) -> std::io::Result<i32> {
     let Some(pane_id) = args.first() else {
-        eprintln!("usage: herdr plugin pane focus <pane_id>");
+        eprintln!("usage: strator plugin pane focus <pane_id>");
         return Ok(2);
     };
     if args.len() != 1 {
-        eprintln!("usage: herdr plugin pane focus <pane_id>");
+        eprintln!("usage: strator plugin pane focus <pane_id>");
         return Ok(2);
     }
     print_plugin_response(Method::PluginPaneFocus(PluginPaneFocusParams {
@@ -845,11 +845,11 @@ fn plugin_pane_focus(args: &[String]) -> std::io::Result<i32> {
 
 fn plugin_pane_close(args: &[String]) -> std::io::Result<i32> {
     let Some(pane_id) = args.first() else {
-        eprintln!("usage: herdr plugin pane close <pane_id>");
+        eprintln!("usage: strator plugin pane close <pane_id>");
         return Ok(2);
     };
     if args.len() != 1 {
-        eprintln!("usage: herdr plugin pane close <pane_id>");
+        eprintln!("usage: strator plugin pane close <pane_id>");
         return Ok(2);
     }
     print_plugin_response(Method::PluginPaneClose(PluginPaneCloseParams {
@@ -1485,7 +1485,7 @@ fn ensure_manifest_unchanged_after_build(
         return Ok(());
     }
     Err(io::Error::other(
-        "plugin build changed herdr-plugin.toml after install preview; aborting install",
+        "plugin build changed strator-plugin.toml after install preview; aborting install",
     ))
 }
 
@@ -1514,7 +1514,7 @@ fn run_plugin_build_command(
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    scrub_herdr_runtime_env(&mut child);
+    scrub_strator_runtime_env(&mut child);
 
     let mut child = match child.spawn() {
         Ok(child) => child,
@@ -1692,21 +1692,21 @@ fn read_tail_capped_output(mut reader: impl Read, cap: usize) -> CappedOutput {
     }
 }
 
-fn scrub_herdr_runtime_env(command: &mut Command) {
+fn scrub_strator_runtime_env(command: &mut Command) {
     for key in [
         crate::api::SOCKET_PATH_ENV_VAR,
         crate::server::socket_paths::CLIENT_SOCKET_PATH_ENV_VAR,
         crate::session::SESSION_ENV_VAR,
-        "HERDR_BIN_PATH",
-        "HERDR_ENV",
-        "HERDR_WORKSPACE_ID",
-        "HERDR_TAB_ID",
-        "HERDR_PANE_ID",
+        "STRATOR_BIN_PATH",
+        "STRATOR_ENV",
+        "STRATOR_WORKSPACE_ID",
+        "STRATOR_TAB_ID",
+        "STRATOR_PANE_ID",
     ] {
         command.env_remove(key);
     }
     for (key, _) in std::env::vars_os() {
-        if key.to_string_lossy().starts_with("HERDR_PLUGIN_") {
+        if key.to_string_lossy().starts_with("STRATOR_PLUGIN_") {
             command.env_remove(key);
         }
     }
@@ -1807,32 +1807,32 @@ fn print_plugin_response(method: Method) -> std::io::Result<i32> {
 }
 
 fn print_plugin_help() {
-    eprintln!("herdr plugin commands:");
-    eprintln!("  herdr plugin install <owner>/<repo>[/subdir...] [--ref REF] [--yes]");
-    eprintln!("  herdr plugin update [<plugin_id|owner/repo[/subdir...]>...] [--yes]");
-    eprintln!("  herdr plugin uninstall <plugin_id|owner/repo[/subdir...]>");
-    eprintln!("  herdr plugin link <path> [--disabled]");
-    eprintln!("  herdr plugin list [--plugin ID] [--json]");
-    eprintln!("  herdr plugin config-dir <plugin_id>");
-    eprintln!("  herdr plugin unlink <plugin_id>");
-    eprintln!("  herdr plugin enable <plugin_id>");
-    eprintln!("  herdr plugin disable <plugin_id>");
-    eprintln!("  herdr plugin action <list|invoke>");
-    eprintln!("  herdr plugin log list [--plugin ID] [--limit N]");
-    eprintln!("  herdr plugin pane <open|focus|close>");
+    eprintln!("strator plugin commands:");
+    eprintln!("  strator plugin install <owner>/<repo>[/subdir...] [--ref REF] [--yes]");
+    eprintln!("  strator plugin update [<plugin_id|owner/repo[/subdir...]>...] [--yes]");
+    eprintln!("  strator plugin uninstall <plugin_id|owner/repo[/subdir...]>");
+    eprintln!("  strator plugin link <path> [--disabled]");
+    eprintln!("  strator plugin list [--plugin ID] [--json]");
+    eprintln!("  strator plugin config-dir <plugin_id>");
+    eprintln!("  strator plugin unlink <plugin_id>");
+    eprintln!("  strator plugin enable <plugin_id>");
+    eprintln!("  strator plugin disable <plugin_id>");
+    eprintln!("  strator plugin action <list|invoke>");
+    eprintln!("  strator plugin log list [--plugin ID] [--limit N]");
+    eprintln!("  strator plugin pane <open|focus|close>");
 }
 
 fn print_plugin_action_help() {
-    eprintln!("herdr plugin action commands:");
-    eprintln!("  herdr plugin action list [--plugin ID]");
-    eprintln!("  herdr plugin action invoke <action_id> [--plugin ID]");
+    eprintln!("strator plugin action commands:");
+    eprintln!("  strator plugin action list [--plugin ID]");
+    eprintln!("  strator plugin action invoke <action_id> [--plugin ID]");
 }
 
 fn print_plugin_pane_help() {
-    eprintln!("herdr plugin pane commands:");
-    eprintln!("  herdr plugin pane open --plugin ID --entrypoint ID [--placement overlay|popup|split|tab|zoomed] [--width SIZE] [--height SIZE] [--workspace ID] [--target-pane PANE] [--direction right|down] [--cwd PATH] [--env KEY=VALUE] [--focus|--no-focus]");
-    eprintln!("  herdr plugin pane focus <pane_id>");
-    eprintln!("  herdr plugin pane close <pane_id>");
+    eprintln!("strator plugin pane commands:");
+    eprintln!("  strator plugin pane open --plugin ID --entrypoint ID [--placement overlay|popup|split|tab|zoomed] [--width SIZE] [--height SIZE] [--workspace ID] [--target-pane PANE] [--direction right|down] [--cwd PATH] [--env KEY=VALUE] [--focus|--no-focus]");
+    eprintln!("  strator plugin pane focus <pane_id>");
+    eprintln!("  strator plugin pane close <pane_id>");
 }
 
 #[cfg(test)]
@@ -1866,9 +1866,9 @@ mod tests {
             plugin_id: id.to_string(),
             name: "Test Plugin".to_string(),
             version: "0.1.0".to_string(),
-            min_herdr_version: crate::build_info::BASE_VERSION.to_string(),
+            min_strator_version: crate::build_info::BASE_VERSION.to_string(),
             description: None,
-            manifest_path: format!("/tmp/{id}/herdr-plugin.toml"),
+            manifest_path: format!("/tmp/{id}/strator-plugin.toml"),
             plugin_root: format!("/tmp/{id}"),
             enabled: true,
             platforms: None,
@@ -1885,7 +1885,7 @@ mod tests {
                 subdir: subdir.map(str::to_string),
                 requested_ref: None,
                 resolved_commit: Some("abc123".to_string()),
-                managed_path: Some(format!("/tmp/herdr/plugins/{id}")),
+                managed_path: Some(format!("/tmp/strator/plugins/{id}")),
                 installed_unix_ms: Some(42),
             },
             warnings: vec![],
@@ -1956,34 +1956,34 @@ mod tests {
 
     #[test]
     fn github_plugin_source_parses_root_repo() {
-        let source = GithubPluginSource::parse("ogulcancelik/herdr-plugin-examples").unwrap();
+        let source = GithubPluginSource::parse("ogulcancelik/strator-plugin-examples").unwrap();
         assert_eq!(source.owner, "ogulcancelik");
-        assert_eq!(source.repo, "herdr-plugin-examples");
+        assert_eq!(source.repo, "strator-plugin-examples");
         assert_eq!(source.subdir, None);
         assert_eq!(
             source.remote_url(),
-            "https://github.com/ogulcancelik/herdr-plugin-examples.git"
+            "https://github.com/ogulcancelik/strator-plugin-examples.git"
         );
     }
 
     #[test]
     fn github_plugin_source_parses_subdir() {
         let source =
-            GithubPluginSource::parse("ogulcancelik/herdr-plugin-examples/worktree-bootstrap")
+            GithubPluginSource::parse("ogulcancelik/strator-plugin-examples/worktree-bootstrap")
                 .unwrap();
         assert_eq!(source.owner, "ogulcancelik");
-        assert_eq!(source.repo, "herdr-plugin-examples");
+        assert_eq!(source.repo, "strator-plugin-examples");
         assert_eq!(source.subdir.as_deref(), Some("worktree-bootstrap"));
     }
 
     #[test]
     fn github_plugin_source_rejects_non_shorthand_sources() {
         for source in [
-            "https://github.com/ogulcancelik/herdr-plugin-examples",
-            "git@github.com:ogulcancelik/herdr-plugin-examples.git",
+            "https://github.com/ogulcancelik/strator-plugin-examples",
+            "git@github.com:ogulcancelik/strator-plugin-examples.git",
             "ogulcancelik",
-            "ogulcancelik/herdr-plugin-examples/../bad",
-            "ogulcancelik/herdr-plugin-examples//bad",
+            "ogulcancelik/strator-plugin-examples/../bad",
+            "ogulcancelik/strator-plugin-examples//bad",
         ] {
             assert!(
                 GithubPluginSource::parse(source).is_err(),
@@ -1995,19 +1995,19 @@ mod tests {
     #[test]
     fn github_source_lookup_matches_installed_plugin_source() {
         let source =
-            GithubPluginSource::parse("ogulcancelik/herdr-plugin-examples/agent-telegram-notify")
+            GithubPluginSource::parse("ogulcancelik/strator-plugin-examples/agent-telegram-notify")
                 .unwrap();
         let plugins = vec![
             github_plugin(
                 "examples.github-link-preview",
                 "ogulcancelik",
-                "herdr-plugin-examples",
+                "strator-plugin-examples",
                 Some("github-link-preview"),
             ),
             github_plugin(
                 "examples.agent-telegram-notify",
                 "ogulcancelik",
-                "herdr-plugin-examples",
+                "strator-plugin-examples",
                 Some("agent-telegram-notify"),
             ),
         ];
@@ -2018,11 +2018,11 @@ mod tests {
 
     #[test]
     fn github_source_lookup_requires_exact_subdir() {
-        let source = GithubPluginSource::parse("ogulcancelik/herdr-plugin-examples").unwrap();
+        let source = GithubPluginSource::parse("ogulcancelik/strator-plugin-examples").unwrap();
         let plugins = vec![github_plugin(
             "examples.agent-telegram-notify",
             "ogulcancelik",
-            "herdr-plugin-examples",
+            "strator-plugin-examples",
             Some("agent-telegram-notify"),
         )];
 
@@ -2031,11 +2031,11 @@ mod tests {
 
     #[test]
     fn github_source_lookup_ignores_owner_and_repo_case() {
-        let source = GithubPluginSource::parse("OGULCANCELIK/HERDR-PLUGIN-EXAMPLES").unwrap();
+        let source = GithubPluginSource::parse("OGULCANCELIK/STRATOR-PLUGIN-EXAMPLES").unwrap();
         let plugins = vec![github_plugin(
             "examples.root",
             "ogulcancelik",
-            "herdr-plugin-examples",
+            "strator-plugin-examples",
             None,
         )];
 
@@ -2047,11 +2047,11 @@ mod tests {
 
     #[test]
     fn github_source_lookup_ignores_local_plugins() {
-        let source = GithubPluginSource::parse("ogulcancelik/herdr-plugin-examples").unwrap();
+        let source = GithubPluginSource::parse("ogulcancelik/strator-plugin-examples").unwrap();
         let mut plugin = github_plugin(
             "examples.local",
             "ogulcancelik",
-            "herdr-plugin-examples",
+            "strator-plugin-examples",
             None,
         );
         plugin.source = PluginSourceInfo::default();
