@@ -16,22 +16,13 @@ use ratatui::widgets::{Block, Borders, Paragraph, Wrap};
 use std::io;
 use std::time::Duration;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Action {
-    Launch,
-    OpenDefault,
-    OpenByok,
-    Attach,
-    Quit,
-}
 
-const BUTTONS: [&str; 5] = [
-    "[ + Shell ]",
-    "[ + Agent ]",
-    "[ + BYOK Agent ]",
-    "[ Theme ]",
-    "[ Quit ]",
-];
+const BUTTONS: [&str; 5] = ["[ Shell ]", "[ Agent ]", "[ BYOK ]", "[ Theme ]", "[ Quit ]"];
+
+/// The dashboard always shows exactly this many terminal panes.
+/// Adding an agent replaces the focused pane — nothing ever opens
+/// outside the dashboard.
+pub const PANE_COUNT: usize = 3;
 
 struct Areas {
     header: Rect,
@@ -46,27 +37,24 @@ fn pane_rects(area: Rect, count: usize) -> Vec<Rect> {
         0 => vec![],
         1 => vec![area],
         2 => Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+            .spacing(1)
             .split(area)
             .to_vec(),
-        3 => {
-            let rows = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
+        _ => {
+            let rows = Layout::vertical([Constraint::Percentage(55), Constraint::Percentage(45)])
+                .spacing(1)
                 .split(area);
             let top = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .spacing(1)
                 .split(rows[0]);
-            vec![top[0], top[1], rows[1]]
-        }
-        _ => {
-            let rows = Layout::vertical([Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(area);
-            let mut out = vec![];
-            for row in rows.iter() {
-                out.extend(
-                    Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
-                        .split(*row)
-                        .iter(),
-                );
+            if count == 3 {
+                vec![top[0], top[1], rows[1]]
+            } else {
+                let bottom = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+                    .spacing(1)
+                    .split(rows[1]);
+                vec![top[0], top[1], bottom[0], bottom[1]]
             }
-            out
         }
     }
 }
@@ -76,10 +64,12 @@ fn areas(area: Rect, pane_count: usize) -> Areas {
         Constraint::Length(1),
         Constraint::Length(1),
         Constraint::Min(6),
-        Constraint::Length(9),
+        Constraint::Length(6),
     ])
+    .margin(1)
     .split(area);
     let cards = Layout::horizontal([Constraint::Percentage(50), Constraint::Percentage(50)])
+        .spacing(1)
         .split(outer[3]);
     Areas {
         header: outer[0],
@@ -132,15 +122,23 @@ fn key_bytes(key: event::KeyEvent) -> Option<Vec<u8>> {
     }
 }
 
+/// Exactly PANE_COUNT spawns: any requested agent first, the rest
+/// plain shells. Nothing is ever opened outside the dashboard.
+pub fn initial_spawns(initial: Vec<PaneSpawn>, cwd: &str) -> Vec<PaneSpawn> {
+    let mut pending = initial;
+    while pending.len() < PANE_COUNT {
+        pending.push(PaneSpawn::shell(cwd));
+    }
+    pending.truncate(PANE_COUNT);
+    pending
+}
+
 pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
     let cwd = std::env::current_dir()
         .map(|p| p.to_string_lossy().into_owned())
         .unwrap_or_else(|_| ".".into());
     let mut panes: Vec<Pane> = vec![];
-    let mut pending = initial;
-    if pending.is_empty() {
-        pending.push(PaneSpawn::shell(&cwd));
-    }
+    let mut pending = initial_spawns(initial, &cwd);
     let mut focus = 0usize;
     let mut usage_text = String::new();
     let refresh_usage = |usage_text: &mut String| {
@@ -180,13 +178,7 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                 let a = areas(frame.area(), panes.len().max(1));
                 frame.render_widget(Block::default().style(Style::default().bg(bg_color)), frame.area());
                 frame.render_widget(
-                    Paragraph::new(format!(
-                        "STRATOR  ·  {} pane{}  ·  {} running  ·  focused: {}",
-                        panes.len(),
-                        if panes.len() == 1 { "" } else { "s" },
-                        running,
-                        panes.get(focus).map(|p| p.title.as_str()).unwrap_or("-")
-                    ))
+                    Paragraph::new(format!("STRATOR  ·  {running}/{} running", panes.len()))
                     .style(Style::default().fg(accent).add_modifier(Modifier::BOLD)),
                     a.header,
                 );
@@ -200,25 +192,16 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                         *rect,
                     );
                 }
-                frame.render_widget(
-                    Paragraph::new("   click pane to type · wheel scrolls · Ctrl+W close pane · Ctrl+Q quit")
-                        .style(Style::default().fg(Color::DarkGray)),
-                    Rect::new(a.buttons.x + 62, a.buttons.y, a.buttons.width.saturating_sub(62), 1),
-                );
                 // Terminal panes.
                 for (i, (pane, rect)) in panes.iter_mut().zip(a.panes.iter()).enumerate() {
                     let focused = i == focus;
                     let status = statuses[i];
-                    let elapsed = pane.started.elapsed().as_secs();
                     let block = Block::default()
                         .borders(Borders::ALL)
                         .title(format!(
-                            " {} · {} · {}m{:02}s {}",
+                            " {} {} ",
                             pane.title,
-                            status,
-                            elapsed / 60,
-                            elapsed % 60,
-                            if focused { "· typing" } else { "" }
+                            if status == "running" { "●" } else { "○" }
                         ))
                         .border_style(if focused {
                             Style::default().fg(accent).add_modifier(Modifier::BOLD)
@@ -275,16 +258,15 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                 let exited = total - running;
                 let bar = crate::progress::bar(running, total.max(1), 20);
                 let mut progress = format!(
-                    "Panes: {total} · running {running} · exited {exited}\nActive [{bar}] {running}/{total}\n"
+                    "{running}/{total} running · {exited} exited  [{bar}]"
                 );
                 for (i, pane) in panes.iter().enumerate() {
                     progress.push_str(&format!(
-                        "\n {} {} · {}",
+                        "\n{} {} · {}",
                         if i == focus { ">" } else { " " },
                         pane.title, statuses[i]
                     ));
                 }
-                progress.push_str("\n\nNew pane: [+ Shell] [+ Agent] [+ BYOK Agent] above.");
                 frame.render_widget(
                     Paragraph::new(progress)
                         .block(
@@ -311,10 +293,11 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                                 handled = true;
                                 match i {
                                     0 => {
-                                        if panes.len() < 4 {
-                                            let spawn = PaneSpawn::shell(&cwd);
-                                            panes.push(Pane::spawn(&spawn, 80, 24)?);
-                                            focus = panes.len() - 1;
+                                        // Fresh shell in the focused pane.
+                                        if !panes.is_empty() {
+                                            let slot = focus.min(panes.len() - 1);
+                                            panes[slot].kill();
+                                            panes[slot] = Pane::spawn(&PaneSpawn::shell(&cwd), 80, 24)?;
                                             last_size = (0, 0);
                                         }
                                     }
@@ -331,9 +314,14 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                                         let _ = execute!(io::stdout(), event::EnableMouseCapture);
                                         last_size = (0, 0);
                                         if let Ok(Some(spawn)) = made {
-                                            if panes.len() < 4 {
+                                            // Agent takes over the focused pane.
+                                            if panes.is_empty() {
                                                 panes.push(Pane::spawn(&spawn, 80, 24)?);
-                                                focus = panes.len() - 1;
+                                                focus = 0;
+                                            } else {
+                                                let slot = focus.min(panes.len() - 1);
+                                                panes[slot].kill();
+                                                panes[slot] = Pane::spawn(&spawn, 80, 24)?;
                                             }
                                             refresh_usage(&mut usage_text);
                                         }
@@ -392,9 +380,9 @@ pub fn run(initial: Vec<PaneSpawn>) -> io::Result<()> {
                             KeyCode::Char('q') | KeyCode::Char('Q') => return Ok(()),
                             KeyCode::Char('w') | KeyCode::Char('W') => {
                                 if !panes.is_empty() {
-                                    let mut pane = panes.remove(focus.min(panes.len() - 1));
-                                    pane.kill();
-                                    focus = focus.min(panes.len().saturating_sub(1));
+                                    let slot = focus.min(panes.len() - 1);
+                                    panes[slot].kill();
+                                    panes[slot] = Pane::spawn(&PaneSpawn::shell(&cwd), 80, 24)?;
                                     last_size = (0, 0);
                                 }
                                 continue;
@@ -453,6 +441,16 @@ mod tests {
         assert!(btns[0].x < btns[1].x && btns[1].x < btns[4].x);
     }
 
+    #[test]
+    fn always_three_panes() {
+        let three = initial_spawns(vec![], "/tmp");
+        assert_eq!(three.len(), PANE_COUNT);
+        assert!(three.iter().all(|s| s.title == "Shell"));
+        let agent = PaneSpawn { title: "Codex / openai".into(), ..PaneSpawn::shell("/tmp") };
+        let mixed = initial_spawns(vec![agent], "/tmp");
+        assert_eq!(mixed.len(), 3);
+        assert_eq!(mixed[0].title, "Codex / openai");
+    }
     #[test]
     fn key_encoding() {
         use crossterm::event::{KeyEvent, KeyEventState};

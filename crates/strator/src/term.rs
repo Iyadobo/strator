@@ -5,7 +5,6 @@ use portable_pty::{native_pty_system, Child, CommandBuilder, MasterPty, PtySize}
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
 use std::sync::{Arc, Mutex};
-use std::time::Instant;
 
 #[derive(Clone, Debug)]
 pub struct PaneSpawn {
@@ -86,7 +85,6 @@ pub fn query_replies(bytes: &[u8], cursor_row: usize, cursor_col: usize) -> Vec<
 
 pub struct Pane {
     pub title: String,
-    pub started: Instant,
     pub screen: Arc<Mutex<Screen>>,
     writer: Arc<Mutex<Box<dyn Write + Send>>>,
     master: Box<dyn MasterPty + Send>,
@@ -150,7 +148,6 @@ impl Pane {
         }
         Ok(Self {
             title: spawn.title.clone(),
-            started: Instant::now(),
             screen,
             writer,
             master: pty.master,

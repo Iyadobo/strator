@@ -567,66 +567,7 @@ pub fn key_source(env_present: bool, saved_present: bool) -> KeySource {
         KeySource::Prompt
     }
 }
-fn open_harness(mut o: Options) -> io::Result<i32> {
-    let mode = open_mode(o.byok, o.cli_default).map_err(io::Error::other)?;
-    // Pick from harnesses actually installed on this machine.
-    let installed: Vec<_> = HARNESSES
-        .iter()
-        .filter(|h| h.id == "terminal" || platform::executable(h.command).is_some())
-        .collect();
-    let harness = if let Some(id) = &o.harness {
-        HARNESSES
-            .iter()
-            .find(|h| h.id == id)
-            .ok_or_else(|| io::Error::other("Unknown harness. Run strator harnesses."))?
-    } else {
-        if installed.is_empty() {
-            return Err(io::Error::other("No supported harness found on PATH. Run strator harnesses."));
-        }
-        let rows: Vec<_> = installed.iter().map(|h| format!("{}  installed", h.name)).collect();
-        let Some(index) = ui::choose(" Open harness ", "Harnesses found on this machine.", &rows)? else {
-            return Ok(0);
-        };
-        installed[index]
-    };
-    o.harness = Some(harness.id.into());
-    if mode == OpenMode::Byok {
-        let compatible: Vec<_> = PROVIDERS
-            .iter()
-            .filter(|p| p.id != "native" && harness.providers.contains(&p.id))
-            .collect();
-        if compatible.is_empty() {
-            return Err(io::Error::other(format!(
-                "{} has no BYOK API provider in Strator. Use CLI default instead: strator open --harness {}",
-                harness.name, harness.id
-            )));
-        }
-        if o.provider.is_none() {
-            let rows: Vec<_> = compatible
-                .iter()
-                .map(|p| format!("{}  [{}]", p.name, p.key_env))
-                .collect();
-            let Some(index) = ui::choose(
-                " BYOK provider ",
-                &format!("Model provider key for {}. One key per provider, saved in the OS credential store, never a plain file.", harness.name),
-                &rows,
-            )? else {
-                return Ok(0);
-            };
-            o.provider = Some(compatible[index].id.into());
-        }
-    } else {
-        // Default path (also bare `strator open`): CLI default model.
-        o.provider = Some("native".into());
-        o.cli_default = true;
-    }
-    launch(o)
-}
-
-/// Gather a launch spec through the pickers and turn it into a Strator
-/// pane spawn. This is the dashboard path: the agent runs in Strator's
-/// own terminal window, never in the old engine.
-pub fn pane_spawn_for(o: &Options, mode: OpenMode) -> io::Result<Option<term::PaneSpawn>> {
+fn pane_spawn_for(o: &Options, mode: OpenMode) -> io::Result<Option<term::PaneSpawn>> {
     let installed: Vec<_> = HARNESSES
         .iter()
         .filter(|h| h.id == "terminal" || platform::executable(h.command).is_some())
