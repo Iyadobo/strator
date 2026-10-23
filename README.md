@@ -32,24 +32,28 @@ Windows: `Strator.cmd` does the same from a checkout.
 
 ## The dashboard
 
-No tabs. One screen, several small windows side by side — a union of
-terminal windows and widgets, all visible at once:
+Strator's own terminal — no engine, no tabs. One screen with real
+terminal panes tiled above two cards:
 
-- **Launch** (top left) — open a harness: CLI default (`Enter`) or
-  BYOK model provider key (`b`); provider-first catalog launch (`l`).
-- **Usage** (bottom left) — launch history: counts by provider,
-  harness, model, project. Scrollable.
-- **Progress** (bottom right) — live agents: working / blocked / done,
-  with a done bar. Scrollable.
-- **Themes + backgrounds** (top right) — click a theme or background
-  and it applies live to the engine config.
+- **Terminal panes** (top, up to 4) — each is a real PTY running a
+  shell or an agent (Codex, Claude, …) in its own window. 1 pane fills
+  the screen, 2 split side by side, 3–4 tile in a grid. Click a pane
+  to focus it and type into it; wheel scrolls its scrollback;
+  `Ctrl+W` closes it, `Ctrl+Q` quits Strator.
+- **Usage card** (bottom left) — launch history: counts by provider,
+  harness, model, project.
+- **Progress card** (bottom right) — panes open, running/exited, with
+  an active bar and one line per pane.
 
-Mouse-first: click a window to focus it, click a row to select,
-double-click (or `Enter`) to run/apply, wheel scrolls the window
-under the cursor. Keyboard still works everywhere: `Tab` moves
-between windows, arrows move, `r` refreshes, `q` quits.
-Inside the multiplexer itself, panes, tabs, and workspaces are
-already fully mouse-operated upstream.
+Header buttons (clickable): **[ + Shell ]** new shell pane,
+**[ + Agent ]** new agent pane with CLI default,
+**[ + BYOK Agent ]** new agent pane with a model provider key,
+**[ Theme ]** cycle background, **[ Quit ]**.
+
+Closing Strator stops its panes — there is no detach/reattach
+engine anymore. `strator launch` still opens the legacy upstream
+engine for anyone who wants it, but nothing in the dashboard
+depends on it.
 
 ## Open a harness: default first, BYOK second
 
@@ -82,7 +86,7 @@ There is no `--api-key` flag.
 ## Commands
 
 ```sh
-strator                 # dashboard
+strator                 # terminal dashboard (own panes + cards)
 strator launch          # provider -> harness -> model -> attach
 strator open [--byok]   # harness-first (see above)
 strator usage           # launch history and counts
@@ -90,7 +94,7 @@ strator progress        # live agent states + done bar
 strator themes          # list themes/backgrounds
 strator themes set dracula ember
 strator doctor          # engine, config, profiles check
-strator attach          # straight into the multiplexer
+strator launch          # legacy upstream engine (optional)
 strator list            # panes + agent states (plain text)
 strator stop PANE_ID
 strator profiles        # auto-saved launch profiles

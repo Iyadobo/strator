@@ -2,7 +2,7 @@
 name = "strator-launcher"
 version = "0.1.0"
 edition = "2021"
-description = "Provider-first terminal launcher for coding harnesses on Strator"
+description = "Strator: multi-window terminal dashboard for coding agents"
 license = "Apache-2.0"
 
 [dependencies]
@@ -13,6 +13,8 @@ serde_json = "1"
 getrandom = "0.3"
 keyring = { version = "3", features = ["windows-native", "apple-native", "sync-secret-service"] }
 reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+portable-pty = "=0.9.0"
+vte = "0.13"
 
 [[bin]]
 name = "strator"

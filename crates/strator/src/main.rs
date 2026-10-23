@@ -1,5 +1,7 @@
 mod catalog;
 mod dashboard;
+mod screen;
+mod term;
 mod progress;
 mod themes;
 mod usage;
@@ -18,7 +20,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 
-const HELP:&str="Strator — default-first terminal launcher: your harness, its own login and model picker. BYOK is secondary.\n\n  strator                          Dashboard: Launch + Usage + Progress + Themes windows, mouse-first\n  strator home                     Same dashboard, explicitly\n  strator usage                    Launch history and counts\n  strator progress                 Live agent states and done bar\n  strator themes [set T [BG]]      List or apply theme + background\n  strator doctor                   Engine, config and profile check\n  strator open [--harness ID]      DEFAULT: open an installed harness with CLI default\n                                   model, its own login + native model picker (no forced --model)\n  strator byok [--harness ID] [--provider ID]\n                                   SECONDARY, BYOK: launch codex / claude / opencode / etc\n                                   with your MODEL PROVIDER key (OpenAI, Anthropic, ...).\n                                   One key per provider, saved in the OS credential store\n                                   and shared by every harness that uses that provider.\n                                   Examples: strator byok --harness codex\n                                             strator byok --harness claude --provider anthropic\n  strator open --byok              Same BYOK path, long form\n  strator launch [OPTIONS]         Advanced provider-first launch (catalog model picker)\n  open/launch flags: --model MODEL overrides CLI default; --cwd PATH; --no-attach\n  strator providers               List model providers and API formats\n  strator harnesses                List harnesses, installation, and BYOK support\n  strator list                     List live panes and agent state\n  strator attach                   Open the full Strator TUI\n  strator stop PANE_ID             Close that pane and stop its process\n  strator profiles                 List auto-saved launch profiles\n  strator profiles forget ID       Remove a profile (keeps saved keys)\n  strator keys save|status|forget --provider ID [--base-url URL]\n\nLaunch options:\n  --profile ID    --provider ID    --harness ID    --model MODEL    --cwd PATH\n  --base-url URL   --key-env NAME  --session NAME   --no-attach\n\nBYOK means a model provider key. It comes from environment, then the OS\ncredential store, then masked entry. Every resolved provider key is saved\nsecurely (per provider + endpoint, not per harness) and reused by any\nharness launched on that provider. Use keys forget to remove it.\nDefault (native) launches use no Strator key at all: the harness login stays in charge.\nModels are fetched from the provider; type in the picker to filter.\nThere is no --api-key option or plaintext credential file. API formats must\nmatch: Codex uses Responses; Claude uses Messages; chat endpoints use OpenCode\nor Aider. STRATOR_ENGINE selects a Strator runtime outside PATH.\n";
+const HELP:&str="Strator — default-first terminal launcher: your harness, its own login and model picker. BYOK is secondary.\n\n  strator                          Own terminal dashboard: up to 4 real panes, Usage + Progress cards below\n  strator home                     Same dashboard, explicitly\n  strator usage                    Launch history and counts\n  strator progress                 Live agent states and done bar\n  strator themes [set T [BG]]      List or apply theme + background\n  strator doctor                   Engine, config and profile check\n  strator open [--harness ID]      DEFAULT: open an installed harness with CLI default\n                                   model, its own login + native model picker (no forced --model)\n  strator byok [--harness ID] [--provider ID]\n                                   SECONDARY, BYOK: launch codex / claude / opencode / etc\n                                   with your MODEL PROVIDER key (OpenAI, Anthropic, ...).\n                                   One key per provider, saved in the OS credential store\n                                   and shared by every harness that uses that provider.\n                                   Examples: strator byok --harness codex\n                                             strator byok --harness claude --provider anthropic\n  strator open --byok              Same BYOK path, long form\n  strator launch [OPTIONS]         Legacy upstream engine launch (not the dashboard)\n  open/launch flags: --model MODEL overrides CLI default; --cwd PATH; --no-attach\n  strator providers               List model providers and API formats\n  strator harnesses                List harnesses, installation, and BYOK support\n  strator list                     List live panes and agent state\n  strator attach                   Open the full Strator TUI\n  strator stop PANE_ID             Close that pane and stop its process\n  strator profiles                 List auto-saved launch profiles\n  strator profiles forget ID       Remove a profile (keeps saved keys)\n  strator keys save|status|forget --provider ID [--base-url URL]\n\nLaunch options:\n  --profile ID    --provider ID    --harness ID    --model MODEL    --cwd PATH\n  --base-url URL   --key-env NAME  --session NAME   --no-attach\n\nBYOK means a model provider key. It comes from environment, then the OS\ncredential store, then masked entry. Every resolved provider key is saved\nsecurely (per provider + endpoint, not per harness) and reused by any\nharness launched on that provider. Use keys forget to remove it.\nDefault (native) launches use no Strator key at all: the harness login stays in charge.\nModels are fetched from the provider; type in the picker to filter.\nThere is no --api-key option or plaintext credential file. API formats must\nmatch: Codex uses Responses; Claude uses Messages; chat endpoints use OpenCode\nor Aider. STRATOR_ENGINE selects a Strator runtime outside PATH.\n";
 
 #[derive(Default)]
 struct Options {
@@ -33,6 +35,11 @@ struct Options {
     no_attach: bool,
     byok: bool,
     cli_default: bool,
+}
+impl Options {
+    pub fn default_session() -> Self {
+        Self { session: "strator".into(), ..Options::default() }
+    }
 }
 fn options(args: &[String]) -> Result<Options, String> {
     let mut o = Options {
@@ -615,6 +622,188 @@ fn open_harness(mut o: Options) -> io::Result<i32> {
     }
     launch(o)
 }
+
+/// Gather a launch spec through the pickers and turn it into a Strator
+/// pane spawn. This is the dashboard path: the agent runs in Strator's
+/// own terminal window, never in the old engine.
+pub fn pane_spawn_for(o: &Options, mode: OpenMode) -> io::Result<Option<term::PaneSpawn>> {
+    let installed: Vec<_> = HARNESSES
+        .iter()
+        .filter(|h| h.id == "terminal" || platform::executable(h.command).is_some())
+        .collect();
+    let harness = if let Some(id) = &o.harness {
+        HARNESSES
+            .iter()
+            .find(|h| h.id == id)
+            .ok_or_else(|| io::Error::other("Unknown harness. Run strator harnesses."))?
+    } else {
+        if installed.is_empty() {
+            return Err(io::Error::other("No supported harness found on PATH. Run strator harnesses."));
+        }
+        let rows: Vec<_> = installed.iter().map(|h| format!("{}  installed", h.name)).collect();
+        let Some(index) = ui::choose(" Open harness ", "Harnesses found on this machine.", &rows)? else {
+            return Ok(None);
+        };
+        installed[index]
+    };
+    let provider = match mode {
+        OpenMode::CliDefault => PROVIDERS.iter().find(|p| p.id == "native").unwrap(),
+        OpenMode::Byok => {
+            let compatible: Vec<_> = PROVIDERS
+                .iter()
+                .filter(|p| p.id != "native" && harness.providers.contains(&p.id))
+                .collect();
+            if compatible.is_empty() {
+                return Err(io::Error::other(format!(
+                    "{} has no BYOK model provider in Strator. Use CLI default instead: strator open --harness {}",
+                    harness.name, harness.id
+                )));
+            }
+            if let Some(id) = &o.provider {
+                compatible
+                    .iter()
+                    .find(|p| p.id == id)
+                    .copied()
+                    .ok_or_else(|| io::Error::other("That provider does not fit this harness. Run strator providers."))?
+            } else {
+                let rows: Vec<_> = compatible
+                    .iter()
+                    .map(|p| format!("{}  [{}]", p.name, p.key_env))
+                    .collect();
+                let Some(index) = ui::choose(
+                    " BYOK provider ",
+                    &format!("Model provider key for {}. One key per provider, saved in the OS credential store, never a plain file.", harness.name),
+                    &rows,
+                )? else {
+                    return Ok(None);
+                };
+                compatible[index]
+            }
+        }
+    };
+    let harness_command = if harness.id == "terminal" {
+        platform::shell()
+    } else {
+        harness.command.into()
+    };
+    if platform::executable(&harness_command).is_none() {
+        return Err(io::Error::other(format!(
+            "{} is not installed. Setup: {}",
+            harness.name, harness.install
+        )));
+    }
+    let interactive = io::stdin().is_terminal();
+    let current = std::env::current_dir()?.to_string_lossy().into_owned();
+    let cwd = match &o.cwd {
+        Some(p) => p.clone(),
+        None if interactive => ui::text("Project folder", &current)?,
+        None => current,
+    };
+    if !PathBuf::from(&cwd).is_dir() {
+        return Err(io::Error::other("Project folder does not exist."));
+    }
+    let endpoint = match &o.endpoint {
+        Some(url) => url.clone(),
+        None if interactive && ["compatible", "responses", "gateway"].contains(&provider.id) => {
+            ui::text("API endpoint URL", "")?
+        }
+        None => provider.endpoint.into(),
+    };
+    let key_env = o.key_env.as_deref().unwrap_or(provider.key_env);
+    if provider.id == "opencode-go" && endpoint.trim_end_matches('/') != provider.endpoint {
+        return Err(io::Error::other("The OpenCode Go preset uses its official endpoint. Choose a custom provider for another URL."));
+    }
+    if !endpoint.is_empty() {
+        catalog::validate_endpoint(&endpoint).map_err(io::Error::other)?;
+    }
+    let key = if provider.id == "native" {
+        None
+    } else {
+        let env_key = std::env::var(key_env).ok().filter(|k| !k.is_empty());
+        let saved_key = if env_key.is_none() {
+            credentials::load(provider.id, &endpoint, key_env)?
+        } else {
+            None
+        };
+        let (key, source) = match key_source(env_key.is_some(), saved_key.is_some()) {
+            KeySource::Env => (env_key.unwrap(), KeySource::Env),
+            KeySource::Saved => (saved_key.unwrap(), KeySource::Saved),
+            KeySource::Prompt => (ui::secret(key_env)?, KeySource::Prompt),
+        };
+        match credentials::save(provider.id, &endpoint, key_env, &key) {
+            Ok(()) => match source {
+                KeySource::Saved => println!("Using saved {} key.", provider.name),
+                _ => println!("{} key saved in your OS credential store.", provider.name),
+            },
+            Err(error) => eprintln!("Key could not be saved ({error}); continuing without saving."),
+        }
+        Some(key)
+    };
+    let model = match &o.model {
+        Some(m) => m.clone(),
+        None if mode == OpenMode::CliDefault => String::new(),
+        None if interactive && harness.model_flag => {
+            let mut ids = Vec::new();
+            if let Some(ref key) = key {
+                println!("Fetching available models…");
+                match models::fetch(provider.id, &endpoint, key) {
+                    Ok(found) => ids = found,
+                    Err(error) => println!("{error} You can enter a model ID manually."),
+                }
+            } else if harness.id == "claude" {
+                ids = ["sonnet", "opus", "haiku", "opusplan"].map(String::from).to_vec();
+            }
+            if provider.id == "opencode-go" {
+                ids.retain(|model| go::supports(harness.id, model));
+            }
+            let requires_model = provider.id != "native"
+                && (provider.id == "opencode-go"
+                    || ["aider", "pi"].contains(&harness.id)
+                    || (harness.id == "opencode" && ["compatible", "responses"].contains(&provider.id)));
+            let mut rows = Vec::new();
+            if !requires_model {
+                rows.push("Use harness default".into());
+            }
+            let manual_index = rows.len();
+            rows.push("Enter model ID manually…".into());
+            rows.extend(ids.iter().cloned());
+            let Some(index) = ui::choose(
+                " Model ",
+                "Provider catalog. Model support also depends on the harness.",
+                &rows,
+            )? else {
+                return Ok(None);
+            };
+            if index == manual_index {
+                ui::text("Model ID", "")?
+            } else if !requires_model && index == 0 {
+                String::new()
+            } else {
+                ids[index - manual_index - 1].clone()
+            }
+        }
+        None => String::new(),
+    };
+    let setup = profiles::Setup {
+        provider: provider.id.into(),
+        harness: harness.id.into(),
+        model: model.clone(),
+        endpoint: endpoint.clone(),
+        key_env: key_env.into(),
+        cwd: std::fs::canonicalize(&cwd)?.to_string_lossy().into_owned(),
+    };
+    let mut spec = catalog::build(harness, provider, &model, &endpoint, key_env, key, cwd.clone())
+        .map_err(io::Error::other)?;
+    spec.command = harness_command;
+    if let Ok(store) = profiles::Store::user() {
+        let _ = store.save(setup.clone());
+    }
+    let _ = usage::record(provider.id, harness.id, &model, &setup.cwd);
+    Ok(Some(term::PaneSpawn::from_spec(
+        &spec,
+        format!("{} / {}", harness.name, provider.id),
+    )))
+}
 fn run() -> io::Result<i32> {
     let args: Vec<_> = std::env::args().skip(1).collect();
     if args.first().is_some_and(|s| s == "__run") {
@@ -625,42 +814,36 @@ fn run() -> io::Result<i32> {
         return platform::spawn_spec(&spec);
     }
     if args.is_empty() && io::stdin().is_terminal() {
-        let (u, p) = dashboard_data().unwrap_or_default();
-        return match dashboard::run(u, p)? {
-            dashboard::Action::Launch => launch(options(&[]).map_err(io::Error::other)?),
-            dashboard::Action::OpenDefault => open_harness(Options { session: "strator".into(), ..Options::default() }),
-            dashboard::Action::OpenByok => open_harness(Options { byok: true, session: "strator".into(), ..Options::default() }),
-            dashboard::Action::Attach => {
-                let o = options(&[]).map_err(io::Error::other)?;
-                let runtime = runtime()?;
-                start(&runtime, &o.session)?;
-                attach(&runtime, &o.session)
-            }
-            dashboard::Action::Quit => Ok(0),
-        };
+        dashboard::run(vec![])?;
+        return Ok(0);
     }
-    let action = args.first().map(String::as_str).unwrap_or("launch");
+    let action = args.first().map(String::as_str).unwrap_or("open");
     match action {
         "home" => {
-            let (u, p) = dashboard_data().unwrap_or_default();
-            match dashboard::run(u, p)? {
-                dashboard::Action::Launch => launch(options(&[]).map_err(io::Error::other)?),
-            dashboard::Action::OpenDefault => open_harness(Options { session: "strator".into(), ..Options::default() }),
-            dashboard::Action::OpenByok => open_harness(Options { byok: true, session: "strator".into(), ..Options::default() }),
-                dashboard::Action::Attach => {
-                    let o = options(&[]).map_err(io::Error::other)?;
-                    let runtime = runtime()?;
-                    start(&runtime, &o.session)?;
-                    attach(&runtime, &o.session)
+            dashboard::run(vec![])?;
+            Ok(0)
+        }
+        "open" => {
+            let o = options(&args[1..]).map_err(io::Error::other)?;
+            let mode = open_mode(o.byok, o.cli_default).map_err(io::Error::other)?;
+            match pane_spawn_for(&o, mode)? {
+                Some(spawn) => {
+                    dashboard::run(vec![spawn])?;
+                    Ok(0)
                 }
-                dashboard::Action::Quit => Ok(0),
+                None => Ok(0),
             }
         }
-        "open" => open_harness(options(&args[1..]).map_err(io::Error::other)?),
         "byok" => {
             let mut o = options(&args[1..]).map_err(io::Error::other)?;
             o.byok = true;
-            open_harness(o)
+            match pane_spawn_for(&o, OpenMode::Byok)? {
+                Some(spawn) => {
+                    dashboard::run(vec![spawn])?;
+                    Ok(0)
+                }
+                None => Ok(0),
+            }
         }
         "usage" => {
             println!("{}", usage::render(&usage::load(), usage::now_secs()));
